@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  password        String
+  name            String?
+  plan            Plan      @default(FREE)
+  niche           String?
+  postsPerDay     Int       @default(5)
+  scheduleStart   Int       @default(9)
+  scheduleEnd     Int       @default(21)
+  pinterestToken  String?
+  openaiKey       String?
+  geminiKey       String?
+  aiProvider      AIProvider @default(OPENAI)
+  isActive        Boolean   @default(true)
+  lastActive      DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  pins            Pin[]
+  jobs            Job[]
+  analytics       Analytics[]
+  learningData    LearningData?
+  apiUsage        APIUsage?
+
+  @@index([email])
+  @@index([plan])
+}
+
+enum Plan {
+  FREE
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum AIProvider {
+  OPENAI
+  GEMINI
+  CLAUDE
+}
+
+model Pin {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  tags        String[]
+  keywords    String[]
+  imageUrl    String?
+  pinId       String?
+  boardId     String?
+  status      PinStatus @default(PENDING)
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  topic       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  analytics   Analytics?
+  job         Job?
+
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+enum PinStatus {
+  PENDING
+  GENERATING
+  SCHEDULED
+  PUBLISHED
+  FAILED
+  ARCHIVED
+}
+
+model Job {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pinId       String?
+  pin         Pin?      @relation(fields: [pinId], references: [id], onDelete: Cascade)
+  type        JobType
+  status      JobStatus @default(PENDING)
+  priority    Int       @default(0)
+  progress    Int       @default(0)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  error       String?
+  result      Json?
+  scheduledAt DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+enum JobType {
+  GENERATE_PIN
+  PUBLISH_PIN
+  FETCH_ANALYTICS
+  OPTIMIZE_CONTENT
+  GENERATE_TOPICS
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  RETRY
+  CANCELLED
+}
+
+model Analytics {
+  id          String   @id @default(uuid())
+  pinId       String   @unique
+  pin         Pin      @relation(fields: [pinId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  saves       Int      @default(0)
+  ctr         Float    @default(0)
+  outbound    Int      @default(0)
+  fetchedAt   DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([pinId])
+  @@index([fetchedAt])
+}
+
+model LearningData {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topKeywords   String[]
+  topTags       String[]
+  bestTitles    String[]
+  bestPatterns  Json?
+  avgCTR        Float    @default(0)
+  avgSaves      Float    @default(0)
+  totalPins     Int      @default(0)
+  successfulPins Int     @default(0)
+  lastUpdated   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model APIUsage {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aiCalls      Int      @default(0)
+  pinGenerations Int    @default(0)
+  imageGenerations Int  @default(0)
+  apiCalls     Int      @default(0)
+  lastReset    DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Topic {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  keywords  String[]
+  category  String?
+  score     Float    @default(0)
+  isUsed    Boolean  @default(false)
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isUsed])
+}
